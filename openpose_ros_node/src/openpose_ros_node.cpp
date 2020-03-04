@@ -86,7 +86,7 @@ DEFINE_int32(keypoint_scale,            0,              "Scaling of the (x,y) co
                                                         " `resolution`), `3` to scale it in the range [0,1], and 4 for range [-1,1]. Non related"
                                                         " with `num_scales` and `scale_gap`.");
 // OpenPose Body Pose
-DEFINE_string(model_pose,               "COCO",         "Model to be used (e.g. COCO, MPI, MPI_4_layers).");
+DEFINE_string(model_pose,               "BODY_25",         "Model to be used (e.g. COCO, MPI, MPI_4_layers).");
 //DEFINE_string(net_resolution,           "320x320",      "Multiples of 16. If it is increased, the accuracy usually increases. If it is decreased,"
  //                                                       " the speed increases.");
 
@@ -196,7 +196,9 @@ DEFINE_string(output_resolution,        "-1x-1",        "The image resolution (d
 
 op::PoseModel gflagToPoseModel(const std::string& poseModeString)
 {
-    op::log("", op::Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+    // It will print info if desiredPriority >= sPriorityThreshold
+    // opLog(message, desiredPriority, __LINE__, __FUNCTION__, __FILE__);
+    op::opLog("", op::Priority::Low, __LINE__, __FUNCTION__, __FILE__);
     if (poseModeString == "COCO")
         return op::PoseModel::COCO_18;
     else if (poseModeString == "MPI")
@@ -212,7 +214,7 @@ op::PoseModel gflagToPoseModel(const std::string& poseModeString)
 
 op::ScaleMode gflagToScaleMode(const int keypointScale)
 {
-    op::log("", op::Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+    op::opLog("", op::Priority::Low, __LINE__, __FUNCTION__, __FILE__);
     if (keypointScale == 0)
         return op::ScaleMode::InputResolution;
     else if (keypointScale == 1)
@@ -265,27 +267,27 @@ op::RenderMode gflagToRenderMode(const int renderFlag, const int renderPoseFlag 
 std::tuple<op::Point<int>, op::Point<int>, op::Point<int>, op::Point<int>, op::PoseModel, op::ScaleMode,
            std::vector<op::HeatMapType>> gflagsToOpParameters()
 {
-    op::log("", op::Priority::Low, __LINE__, __FUNCTION__, __FILE__);
+    op::opLog("", op::Priority::Low, __LINE__, __FUNCTION__, __FILE__);
     // outputSize
     op::Point<int> outputSize;
     auto nRead = sscanf(FLAGS_resolution.c_str(), "%dx%d", &outputSize.x, &outputSize.y);
     nRead = sscanf(FLAGS_resolution.c_str(), "%dx%d", &outputSize.x, &outputSize.y);
-    op::checkE(nRead, 2, "Error, resolution format (" +  FLAGS_resolution + ") invalid, should be e.g., 960x540 ",
+    op::checkEqual(nRead, 2, "Error, resolution format (" +  FLAGS_resolution + ") invalid, should be e.g., 960x540 ",
                __LINE__, __FUNCTION__, __FILE__);
     // netInputSize
     op::Point<int> netInputSize;
     nRead = sscanf(FLAGS_net_resolution.c_str(), "%dx%d", &netInputSize.x, &netInputSize.y);
-    op::checkE(nRead, 2, "Error, net resolution format (" +  FLAGS_net_resolution + ") invalid, should be e.g., 656x368 (multiples of 16)",
+    op::checkEqual(nRead, 2, "Error, net resolution format (" +  FLAGS_net_resolution + ") invalid, should be e.g., 656x368 (multiples of 16)",
                __LINE__, __FUNCTION__, __FILE__);
     // faceNetInputSize
     op::Point<int> faceNetInputSize;
     nRead = sscanf(FLAGS_face_net_resolution.c_str(), "%dx%d", &faceNetInputSize.x, &faceNetInputSize.y);
-    op::checkE(nRead, 2, "Error, face net resolution format (" +  FLAGS_face_net_resolution
+    op::checkEqual(nRead, 2, "Error, face net resolution format (" +  FLAGS_face_net_resolution
                + ") invalid, should be e.g., 368x368 (multiples of 16)", __LINE__, __FUNCTION__, __FILE__);
     // handNetInputSize
     op::Point<int> handNetInputSize;
     nRead = sscanf(FLAGS_hand_net_resolution.c_str(), "%dx%d", &handNetInputSize.x, &handNetInputSize.y);
-    op::checkE(nRead, 2, "Error, hand net resolution format (" +  FLAGS_hand_net_resolution
+    op::checkEqual(nRead, 2, "Error, hand net resolution format (" +  FLAGS_hand_net_resolution
                + ") invalid, should be e.g., 368x368 (multiples of 16)", __LINE__, __FUNCTION__, __FILE__);
     // poseModel
     const auto poseModel = gflagToPoseModel(FLAGS_model_pose);
@@ -297,15 +299,15 @@ std::tuple<op::Point<int>, op::Point<int>, op::Point<int>, op::Point<int>, op::P
     return std::make_tuple(outputSize, netInputSize, faceNetInputSize, handNetInputSize, poseModel, keypointScale, heatMapTypes);
 }
 
-op::Point<int> outputSize= op::flagsToPoint(FLAGS_output_resolution, "-1x-1");
-op::Point<int> netInputSize= op::flagsToPoint(FLAGS_net_resolution, "-1x368");
+op::Point<int> outputSize= op::flagsToPoint(op::String(FLAGS_output_resolution), "-1x-1");
+op::Point<int> netInputSize= op::flagsToPoint(op::String(FLAGS_net_resolution), "-1x368");
 op::Point<int> netOutputSize;
 op::Point<int> faceNetInputSize;
 op::Point<int> handNetInputSize;
 op::ScaleMode keypointScale;
 std::vector<op::HeatMapType> heatMapTypes;
 
-const auto poseModel = op::flagsToPoseModel(FLAGS_model_pose);
+const auto poseModel = op::flagsToPoseModel(op::String(FLAGS_model_pose));
 op::CvMatToOpInput cvMatToOpInput{poseModel};
 op::CvMatToOpOutput *cvMatToOpOutput;
 op::PoseExtractorCaffe poseExtractorCaffe{poseModel, FLAGS_model_folder, FLAGS_num_gpu_start};
@@ -315,7 +317,7 @@ op::PoseCpuRenderer poseRenderer{poseModel, (float)FLAGS_render_threshold, !FLAG
 op::ScaleAndSizeExtractor scaleAndSizeExtractor(netInputSize, outputSize, FLAGS_scale_number, FLAGS_scale_gap);
 
 op::FaceDetector *faceDetector;
-op::FaceExtractorNet *faceExtractor;
+//op::FaceExtractorNet *faceExtractor;
 op::FaceRenderer *faceRenderer;
 
 op::OpOutputToCvMat *opOutputToCvMat;
@@ -323,7 +325,7 @@ op::OpOutputToCvMat *opOutputToCvMat;
 int init_openpose()
 {
     // logging_level
-    op::check(0 <= FLAGS_logging_level && FLAGS_logging_level <= 255, "Wrong logging_level value.", __LINE__, __FUNCTION__, __FILE__);
+    op::checkBool(0 <= FLAGS_logging_level && FLAGS_logging_level <= 255, "Wrong logging_level value.", __LINE__, __FUNCTION__, __FILE__);
     op::ConfigureLog::setPriorityThreshold((op::Priority)FLAGS_logging_level);
    
 
@@ -373,8 +375,10 @@ openpose_ros_msgs::Persons processImgForPoseDetection(cv_bridge::CvImagePtr &cv_
     std::tie(scaleInputToNetInputs, netInputSizes, scaleInputToOutput, outputResolution)
         = scaleAndSizeExtractor.extract(imageSize);
     // Step 3 - Format input image to OpenPose input and output formats
-    const auto netInputArray = cvMatToOpInput.createArray(cv_ptr->image, scaleInputToNetInputs, netInputSizes);
-    auto outputArray = cvMatToOpOutput->createArray(cv_ptr->image, scaleInputToOutput, outputResolution);
+  
+    const auto netInputArray = cvMatToOpInput.createArray(OP_CV2OPMAT(cv_ptr->image), scaleInputToNetInputs, netInputSizes);
+
+    auto outputArray = cvMatToOpOutput->createArray(OP_CV2OPMAT(cv_ptr->image), scaleInputToOutput, outputResolution);
 
 
 
@@ -426,7 +430,7 @@ openpose_ros_msgs::Persons processImgForPoseDetection(cv_bridge::CvImagePtr &cv_
 
         //auto outputImage = opOutputToCvMat->formatToCvMat(outputArray);
 
-        sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", outputImage).toImageMsg();
+        sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", OP_OP2CVMAT(outputImage)).toImageMsg();
         publish_result.publish(msg);
     }
     return persons;
@@ -472,7 +476,7 @@ int main(int argc, char *argv[])
     FLAGS_resolution = getParam(local_nh, "resolution", std::string("640x480"));
     FLAGS_num_gpu = getParam(local_nh, "num_gpu", -1);
     FLAGS_num_gpu_start = getParam(local_nh, "num_gpu_start", 1);
-    FLAGS_model_pose = getParam(local_nh, "model_pose", std::string("COCO"));
+    FLAGS_model_pose = getParam(local_nh, "model_pose", std::string("BODY_25"));
     //FLAGS_net_resolution = getParam(local_nh, "net_resolution", std::string("640x480"));
     FLAGS_net_resolution = getParam(local_nh, "net_resolution", std::string("-1x480"));
     FLAGS_face = getParam(local_nh, "face", false);
